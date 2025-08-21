@@ -12,6 +12,26 @@
 #include "hardware/pwm.h"
 #include "hardware/adc.h"
 
+// Be aware that RP2350B (60 pin package) has different AD channel
+// assignments from RP2350A (48 pin package).
+// And be aware that for some boards, e.g. Adafruit Metro 2350,
+// A0 is NOT the pin of the lowest channel but of channel 1.
+// For RP2350B, we don't try to use more than the lowest 4 channels
+// because the number of channels hard coded here in many places.
+// TODO: Fix this.
+
+#ifdef PICO_RP2350A
+#if PICO_RP2350A
+#define A_MIN 26
+#define A_MAX 29
+#else
+#define A_MIN 40
+#define A_MAX 43
+#endif
+#else
+#define A_MIN 26
+#define A_MAX 29
+#endif
 
 /* Singleton instance of the ADC engine */
 RP2040ADCEngine engine;
@@ -27,8 +47,8 @@ float _readADCVoltageInline(const int pinA, const void* cs_params) {
     // new ADC conversions, which probably won't improve the accuracy.
     _UNUSED(cs_params);
 
-    if (pinA>=26 && pinA<=29 && engine.channelsEnabled[pinA-26]) {
-        return engine.lastResults.raw[pinA-26]*engine.adc_conv;
+    if (pinA>=A_MIN && pinA<=A_MAX && engine.channelsEnabled[pinA-A_MIN]) {
+        return engine.lastResults.raw[pinA-A_MIN]*engine.adc_conv;
     }
 
     // otherwise return NaN
@@ -77,8 +97,8 @@ void* _configureADCInline(const void *driver_params, const int pinA, const int p
 //     // like this we have block interrupts 3x instead of just once, and of course have the chance of reading across
 //     // new ADC conversions, which probably won't improve the accuracy.
 
-//     if (pinA>=26 && pinA<=29 && engine.channelsEnabled[pinA-26]) {
-//         return engine.lastResults[pinA-26]*engine.adc_conv;
+//     if (pinA>=A_MIN && pinA<=A_MAX && engine.channelsEnabled[pinA-A_MIN]) {
+//         return engine.lastResults[pinA-A_MIN]*engine.adc_conv;
 //     }
 
 //     // otherwise return NaN
@@ -130,8 +150,8 @@ RP2040ADCEngine::RP2040ADCEngine() {
 
 
 void RP2040ADCEngine::addPin(int pin) {
-    if (pin>=26 && pin<=29)
-        channelsEnabled[pin-26] = true;
+    if (pin>=A_MIN && pin<=A_MAX)
+        channelsEnabled[pin-A_MIN] = true;
     else
         SIMPLEFOC_DEBUG("RP2040-CUR: ERR: Not an ADC pin: ", pin);
 };
@@ -154,7 +174,7 @@ bool RP2040ADCEngine::init() {
     int channelCount = 0;
     for (int i = 3; i>=0; i--) {
         if (channelsEnabled[i]){
-            adc_gpio_init(i+26);
+            adc_gpio_init(i+A_MIN);
             enableMask |= (0x01<<i);
             channelCount++;
         }
