@@ -323,19 +323,19 @@ void FOCMotor::monitor() {
 
   if(monitor_variables & _MON_TARGET){
     if(!printed && monitor_start_char) monitor_port->print(monitor_start_char);
-    monitor_port->print(target,monitor_decimals);    
+    monitor_port->printf("%9.2f", target);
     printed= true;
   }
   if(monitor_variables & _MON_VOLT_Q) {
     if(!printed && monitor_start_char) monitor_port->print(monitor_start_char);
     else if(printed) monitor_port->print(monitor_separator);
-    monitor_port->print(voltage.q,monitor_decimals);
+    monitor_port->printf("%7.2f", voltage.q);
     printed= true;
   }
   if(monitor_variables & _MON_VOLT_D) {
     if(!printed && monitor_start_char) monitor_port->print(monitor_start_char);
     else if(printed) monitor_port->print(monitor_separator);
-    monitor_port->print(voltage.d,monitor_decimals);
+    monitor_port->printf("%7.2f", voltage.d);
     printed= true;
   }
   // read currents if possible - even in voltage mode (if current_sense available)
@@ -349,13 +349,13 @@ void FOCMotor::monitor() {
     if(monitor_variables & _MON_CURR_Q) {
       if(!printed && monitor_start_char) monitor_port->print(monitor_start_char);
       else if(printed) monitor_port->print(monitor_separator);
-      monitor_port->print(c.q*1000, monitor_decimals); // mAmps
+      monitor_port->printf("%7.f", c.q*1000); // mAmps
       printed= true;
     }
     if(monitor_variables & _MON_CURR_D) {
       if(!printed && monitor_start_char) monitor_port->print(monitor_start_char);
       else if(printed) monitor_port->print(monitor_separator);
-      monitor_port->print(c.d*1000, monitor_decimals); // mAmps
+      monitor_port->printf("%7.f", c.d*1000); // mAmps
       printed= true;
     }
   }
@@ -363,13 +363,13 @@ void FOCMotor::monitor() {
   if(monitor_variables & _MON_VEL) {
     if(!printed && monitor_start_char) monitor_port->print(monitor_start_char);
     else if(printed) monitor_port->print(monitor_separator);
-    monitor_port->print(shaft_velocity,monitor_decimals);
+    monitor_port->printf("%7.2f", shaft_velocity);
     printed= true;
   }
   if(monitor_variables & _MON_ANGLE) {
     if(!printed && monitor_start_char) monitor_port->print(monitor_start_char);
     else if(printed) monitor_port->print(monitor_separator);
-    monitor_port->print(shaft_angle,monitor_decimals);
+    monitor_port->printf("%9.2f", shaft_angle);
     printed= true;
   }
   if(printed){
