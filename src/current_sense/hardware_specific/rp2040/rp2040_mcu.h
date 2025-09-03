@@ -4,7 +4,7 @@
 
 /*
  * RP2040 ADC features are very weak :-(
- *  - only 4 inputs
+ *  - only 4 inputs (8 on RP2350B -- QFN-80 package)
  *  - only 9 bit effective resolution
  *  - read only 1 input at a time
  *  - 2 microseconds conversion time!
@@ -51,8 +51,39 @@
 #define SIMPLEFOC_RP2040_ADC_VDDA 3.3f
 #endif
 
+// Be aware that RP2350B (QFN-80 package) has different AD channel
+// assignments from RP2350A (60 pin package).
+// And be aware that for some boards, e.g. Adafruit Metro 2350,
+// A0 is NOT the pin of the lowest channel but of channel 1.
+
+#ifdef PICO_RP2350A
+#if PICO_RP2350A
+#define A_MIN 26
+#define A_MAX 29
+#else // RP2350B
+#define A_MIN 40
+#define A_MAX 47
+#endif
+#else
+#define A_MIN 26
+#define A_MAX 29
+#endif
 
 union ADCResults {
+#if A_MAX == 47
+    uint64_t value;
+    uint8_t raw[8];
+    struct {
+        uint8_t ch0;
+        uint8_t ch1;
+        uint8_t ch2;
+        uint8_t ch3;
+        uint8_t ch4;
+        uint8_t ch5;
+        uint8_t ch6;
+        uint8_t ch7;
+    };
+#else
     uint32_t value;
     uint8_t raw[4];
     struct {
@@ -61,6 +92,7 @@ union ADCResults {
         uint8_t ch2;
         uint8_t ch3;
     };
+#endif
 };
 
 
@@ -86,8 +118,8 @@ public:
     //uint copyDMAChannel;
     //uint triggerDMAChannel;
 
-    bool channelsEnabled[4];
-    volatile uint8_t samples[4];
+    bool channelsEnabled[A_MAX-A_MIN];
+    volatile uint8_t samples[A_MAX-A_MIN];
     volatile ADCResults lastResults;
     //alignas(32) volatile uint8_t nextResults[4];
 };

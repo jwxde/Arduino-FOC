@@ -12,27 +12,6 @@
 #include "hardware/pwm.h"
 #include "hardware/adc.h"
 
-// Be aware that RP2350B (60 pin package) has different AD channel
-// assignments from RP2350A (48 pin package).
-// And be aware that for some boards, e.g. Adafruit Metro 2350,
-// A0 is NOT the pin of the lowest channel but of channel 1.
-// For RP2350B, we don't try to use more than the lowest 4 channels
-// because the number of channels hard coded here in many places.
-// TODO: Fix this.
-
-#ifdef PICO_RP2350A
-#if PICO_RP2350A
-#define A_MIN 26
-#define A_MAX 29
-#else
-#define A_MIN 40
-#define A_MAX 43
-#endif
-#else
-#define A_MIN 26
-#define A_MAX 29
-#endif
-
 /* Singleton instance of the ADC engine */
 RP2040ADCEngine engine;
 
@@ -125,6 +104,16 @@ void _adcConversionFinishedHandler() {
         engine.lastResults.raw[2] = (*from++);
     if (engine.channelsEnabled[3])
         engine.lastResults.raw[3] = (*from++);
+    #if A_MAX == 47
+    if (engine.channelsEnabled[4])
+        engine.lastResults.raw[4] = (*from++);
+    if (engine.channelsEnabled[5])
+        engine.lastResults.raw[5] = (*from++);
+    if (engine.channelsEnabled[6])
+        engine.lastResults.raw[6] = (*from++);
+    if (engine.channelsEnabled[7])
+        engine.lastResults.raw[7] = (*from++);
+    #endif
     //dma_channel_acknowledge_irq0(engine.readDMAChannel);
     dma_hw->ints0 = 1u << engine.readDMAChannel;
     //dma_start_channel_mask( (1u << engine.readDMAChannel) );
@@ -144,6 +133,12 @@ RP2040ADCEngine::RP2040ADCEngine() {
     channelsEnabled[1] = false;
     channelsEnabled[2] = false;
     channelsEnabled[3] = false;
+    #if A_MAX == 47
+    channelsEnabled[4] = false;
+    channelsEnabled[5] = false;
+    channelsEnabled[6] = false;
+    channelsEnabled[7] = false;
+    #endif
     initialized = false;
 };
 
@@ -172,7 +167,7 @@ bool RP2040ADCEngine::init() {
     adc_init();
     int enableMask = 0x00;
     int channelCount = 0;
-    for (int i = 3; i>=0; i--) {
+    for (int i = 0; i < A_MAX-A_MIN; i++) {
         if (channelsEnabled[i]){
             adc_gpio_init(i+A_MIN);
             enableMask |= (0x01<<i);
@@ -244,7 +239,7 @@ void RP2040ADCEngine::start() {
     SIMPLEFOC_DEBUG("RP2040-CUR: ADC engine starting");
     irq_set_enabled(DMA_IRQ_0, true);
     dma_start_channel_mask( (1u << readDMAChannel) );
-    for (int i=0;i<4;i++) {
+    for (int i=0;i<A_MAX-A_MIN;i++) {
         if (channelsEnabled[i]) {
             adc_select_input(i); // set input to first enabled channel
             break;
