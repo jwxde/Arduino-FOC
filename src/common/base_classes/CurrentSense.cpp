@@ -229,7 +229,7 @@ int CurrentSense::alignBLDCDriver(float voltage, BLDCDriver* bldc_driver, bool m
     // 2) if the currents measured have good polarity
     // 
     // > when we apply a voltage to a phase A of the driver what we expect to measure is the current I on the phase A
-    //   and -I/2 on the phase B and I/2 on the phase C
+    //   and -I/2 on the phase B and -I/2 on the phase C
 
     // find the highest magnitude in c_a
     // and make sure it's around 2 (1.5 at least) times higher than the other two
