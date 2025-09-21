@@ -347,6 +347,8 @@ void FOCMotor::monitor() {
       c.d = LPF_current_d(c.d);
     }
     if(monitor_variables & _MON_CURR_Q) {
+      // estimate the motor current if phase reistance available and current_sense not available
+      if(!current_sense && _isset(phase_resistance)) c.q = (voltage.q - voltage_bemf)/phase_resistance;
       if(!printed && monitor_start_char) monitor_port->print(monitor_start_char);
       else if(printed) monitor_port->print(monitor_separator);
       monitor_port->printf("%7.f", c.q*1000); // mAmps

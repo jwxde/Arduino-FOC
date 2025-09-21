@@ -254,6 +254,12 @@ class FOCMotor
 
     // monitoring functions
     Print* monitor_port; //!< Serial terminal variable if provided
+
+    void inline update_bemf() {
+      // calculate the back-emf voltage if KV_rating available U_bemf = vel*(1/KV)
+      if (_isset(KV_rating)) voltage_bemf = shaft_velocity/(KV_rating*_SQRT3)/_RPM_TO_RADS;
+    }
+
   private:
     // monitor counting variable
     unsigned int monitor_cnt = 0 ; //!< counting variable

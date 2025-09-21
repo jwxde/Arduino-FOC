@@ -349,9 +349,18 @@ void BLDCMotor::loopFOC() {
   // This function will not have numerical issues because it uses Sensor::getMechanicalAngle() 
   // which is in range 0-2PI
   electrical_angle = electricalAngle();
+
   switch (torque_controller) {
     case TorqueControlType::voltage:
-      // no need to do anything really
+      if(!_isset(phase_resistance))  voltage.q = current_sp;
+      else  {
+        update_bemf();
+        voltage.q = current_sp*phase_resistance + voltage_bemf;
+      }
+      voltage.q = _constrain(voltage.q, -voltage_limit, voltage_limit);
+      // set d-component (lag compensation if known inductance)
+      if(!_isset(phase_inductance)) voltage.d = 0;
+      else voltage.d = _constrain( -target*shaft_velocity*pole_pairs*phase_inductance, -voltage_limit, voltage_limit);
       break;
     case TorqueControlType::dc_current:
       if(!current_sense) return;
@@ -416,24 +425,10 @@ void BLDCMotor::move(float new_target) {
   // if disabled do nothing
   if(!enabled) return;
   
-  // calculate the back-emf voltage if KV_rating available U_bemf = vel*(1/KV)
-  if (_isset(KV_rating)) voltage_bemf = shaft_velocity/(KV_rating*_SQRT3)/_RPM_TO_RADS;
-  // estimate the motor current if phase reistance available and current_sense not available
-  if(!current_sense && _isset(phase_resistance)) current.q = (voltage.q - voltage_bemf)/phase_resistance;
-
   // upgrade the current based voltage limit
   switch (controller) {
     case MotionControlType::torque:
-      if(torque_controller == TorqueControlType::voltage){ // if voltage torque control
-        if(!_isset(phase_resistance))  voltage.q = target;
-        else  voltage.q =  target*phase_resistance + voltage_bemf;
-        voltage.q = _constrain(voltage.q, -voltage_limit, voltage_limit);
-        // set d-component (lag compensation if known inductance)
-        if(!_isset(phase_inductance)) voltage.d = 0;
-        else voltage.d = _constrain( -target*shaft_velocity*pole_pairs*phase_inductance, -voltage_limit, voltage_limit);
-      }else{
-        current_sp = target; // if current/foc_current torque control
-      }
+      current_sp = target;
       break;
     case MotionControlType::angle:
       // TODO sensor precision: this calculation is not numerically precise. The target value cannot express precise positions when
@@ -446,30 +441,12 @@ void BLDCMotor::move(float new_target) {
       shaft_velocity_sp = _constrain(shaft_velocity_sp,-velocity_limit, velocity_limit);
       // calculate the torque command - sensor precision: this calculation is ok, but based on bad value from previous calculation
       current_sp = PID_velocity(shaft_velocity_sp - shaft_velocity); // if voltage torque control
-      // if torque controlled through voltage
-      if(torque_controller == TorqueControlType::voltage){
-        // use voltage if phase-resistance not provided
-        if(!_isset(phase_resistance))  voltage.q = current_sp;
-        else  voltage.q =  _constrain( current_sp*phase_resistance + voltage_bemf , -voltage_limit, voltage_limit);
-        // set d-component (lag compensation if known inductance)
-        if(!_isset(phase_inductance)) voltage.d = 0;
-        else voltage.d = _constrain( -current_sp*shaft_velocity*pole_pairs*phase_inductance, -voltage_limit, voltage_limit);
-      }
       break;
     case MotionControlType::velocity:
       // velocity set point - sensor precision: this calculation is numerically precise.
       shaft_velocity_sp = target;
       // calculate the torque command
       current_sp = PID_velocity(shaft_velocity_sp - shaft_velocity); // if current/foc_current torque control
-      // if torque controlled through voltage control
-      if(torque_controller == TorqueControlType::voltage){
-        // use voltage if phase-resistance not provided
-        if(!_isset(phase_resistance))  voltage.q = current_sp;
-        else  voltage.q = _constrain( current_sp*phase_resistance + voltage_bemf , -voltage_limit, voltage_limit);
-        // set d-component (lag compensation if known inductance)
-        if(!_isset(phase_inductance)) voltage.d = 0;
-        else voltage.d = _constrain( -current_sp*shaft_velocity*pole_pairs*phase_inductance, -voltage_limit, voltage_limit);
-      }
       break;
     case MotionControlType::velocity_openloop:
       // velocity control in open loop - sensor precision: this calculation is numerically precise.
@@ -630,6 +607,7 @@ float BLDCMotor::velocityOpenloop(float target_velocity){
   // use voltage limit or current limit
   float Uq = voltage_limit;
   if(_isset(phase_resistance)){
+    update_bemf();
     Uq = _constrain(current_limit*phase_resistance + fabs(voltage_bemf),-voltage_limit, voltage_limit);
     // recalculate the current  
     current.q = (Uq - fabs(voltage_bemf))/phase_resistance;
@@ -670,6 +648,7 @@ float BLDCMotor::angleOpenloop(float target_angle){
   // use voltage limit or current limit
   float Uq = voltage_limit;
   if(_isset(phase_resistance)){
+    update_bemf();
     Uq = _constrain(current_limit*phase_resistance + fabs(voltage_bemf),-voltage_limit, voltage_limit);
     // recalculate the current  
     current.q = (Uq - fabs(voltage_bemf))/phase_resistance;
