@@ -212,6 +212,15 @@ int CurrentSense::alignBLDCDriver(float voltage, BLDCDriver* bldc_driver, bool m
     }
     _delay(500);
     PhaseCurrent_s c_a = readAverageCurrents();
+    char msg[128];
+    sprintf(msg, "CS: Phase A currents: %f %f %f", c_a.a, c_a.b, c_a.c);
+    SIMPLEFOC_DEBUG(msg);
+    sprintf(msg, "CS: current balance: %f", c_a.a + c_a.b + c_a.c);
+    SIMPLEFOC_DEBUG(msg);
+    sprintf(msg, "CS: offsets: %f, %f, %f", offset_ia, offset_ib, offset_ic);
+    SIMPLEFOC_DEBUG(msg);
+    sprintf(msg, "CS: gains: %f, %f, %f", gain_a, gain_b, gain_c);
+    SIMPLEFOC_DEBUG(msg);
     bldc_driver->setPwm(zero, zero, zero);
     // check if currents are to low (lower than 100mA) 
     // TODO calculate the 100mA threshold from the ADC resolution
